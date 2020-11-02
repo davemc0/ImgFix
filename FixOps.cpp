@@ -765,7 +765,7 @@ template void DoThreshold(uc3Image& Img, const uc3Image::PixType threshold);
 template <class Image_T>
 float LinearMapError(const HVector<float>& OVec, void* imgp)
 {
-	for (float f : OVec)
+	for (const float f : OVec)
 		if (f < 0.f || f > 1.0f)
 			return std::numeric_limits<float>::max();
 
