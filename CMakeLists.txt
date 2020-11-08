@@ -33,6 +33,8 @@ set(SOURCES
     Driver.cpp
     FixOps.cpp
     FixOps.h
+    Helpers.cpp
+    Helpers.h
 )
 
 source_group("src"  FILES ${SOURCES})
@@ -45,6 +47,7 @@ set_target_properties(ImgFix PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${PROJECT_
 
 target_include_directories(ImgFix
     PRIVATE "${PROJECT_ROOT_DIR}/../DMcTools"
+    PRIVATE "${PROJECT_ROOT_DIR}/../DMcTools/deps"
 )
 
 target_link_libraries(ImgFix PRIVATE DMcTools)
