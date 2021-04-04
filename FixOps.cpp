@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
 
 namespace {
 
@@ -64,14 +63,14 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     ASSERT_R(sw > 0 && sh > 0);
 
     // Copy the source image into the dest image
-    cerr << "Copying to " << dx << ',' << dy << " from " << sx << ',' << sy << " size " << sw << 'x' << sh << " mode " << mode << " key (mode 2) " << key
+    std::cerr << "Copying to " << dx << ',' << dy << " from " << sx << ',' << sy << " size " << sw << 'x' << sh << " mode " << mode << " key (mode 2) " << key
          << " alpha (mode 4) " << alpha << '\n';
     CopyRect(*dstImg, *srcImg, sx, sy, dx, dy, sw, sh, mode, key, alpha);
 }
 
 template <class Pixel_T> inline bool isDark(const typename Pixel_T p, const typename Pixel_T::ElType threshold)
 {
-    for (int c = 0; c < typename Pixel_T::Chan; c++) {
+    for (int c = 0; c < Pixel_T::Chan; c++) {
         if (p[c] > threshold) { return false; }
     }
     return true;
@@ -147,7 +146,7 @@ template <class Image_T> void TransposeImage(Image_T& Out, const Image_T& In)
 template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In, const int dw, const int dh)
 {
     const int chan = Image_T::PixType::Chan;
-    typedef typename tPixel<float, chan> FPT;
+    typedef tPixel<float, chan> FPT;
 
     int iw = In.w(), ih = In.h();
     Out.SetSize(iw - 1, ih);
@@ -212,7 +211,7 @@ template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In
 void DoCopyBlock(std::shared_ptr<baseImage> curImg, std::shared_ptr<baseImage> blitImg, int dx, int dy, int sx, int sy, int sw, int sh, int mode, uc4Pixel key,
                  float alpha)
 {
-    cerr << "Copy: " << '\n';
+    std::cerr << "Copy: " << '\n';
     ASSERT_R(typeid(*curImg) == typeid(*blitImg));
 
     if (dynamic_cast<const uc1Image*>(curImg.get())) {
@@ -234,7 +233,7 @@ void DoCopyBlock(std::shared_ptr<baseImage> curImg, std::shared_ptr<baseImage> b
 
 void DoFill(std::shared_ptr<baseImage> curImg, float r, float g, float b, float a)
 {
-    cerr << "Fill: " << r << ',' << g << ',' << b << ',' << a << '\n';
+    std::cerr << "Fill: " << r << ',' << g << ',' << b << ',' << a << '\n';
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1I->fill(f1Pixel(r));
@@ -255,7 +254,7 @@ void DoFill(std::shared_ptr<baseImage> curImg, float r, float g, float b, float 
 
 void DoFlip(std::shared_ptr<baseImage> curImg, bool isVert)
 {
-    cerr << "Flip: " << (isVert ? "vertical" : "horizontal") << endl;
+    std::cerr << "Flip: " << (isVert ? "vertical" : "horizontal") << std::endl;
 
     if (isVert) {
         // Modifies image in place
@@ -286,7 +285,7 @@ void DoFlip(std::shared_ptr<baseImage> curImg, bool isVert)
 
 void DoGradient(std::shared_ptr<baseImage> curImg, int c, bool isVert, int minx, int maxx)
 {
-    cerr << "Gradient: channel " << c << (isVert ? " vertical" : " horizontal") << " minx " << minx << " maxx " << maxx << endl;
+    std::cerr << "Gradient: channel " << c << (isVert ? " vertical" : " horizontal") << " minx " << minx << " maxx " << maxx << std::endl;
 
     // Modifies image in place
     if (curImg->size_element_virtual() > 1 || !curImg->is_integer_virtual()) throw DMcError("Unsupported image type.\n");
@@ -313,7 +312,7 @@ void DoGradient(std::shared_ptr<baseImage> curImg, int c, bool isVert, int minx,
 
 std::shared_ptr<baseImage> DoBlur(std::shared_ptr<baseImage> curImg, int filtWid, float imageStDev)
 {
-    cerr << "Blur: " << filtWid << " " << imageStDev << endl;
+    std::cerr << "Blur: " << filtWid << " " << imageStDev << std::endl;
 
     if (std::shared_ptr<f1Image> f1I = dynamic_pointer_cast<f1Image>(curImg)) {
         std::shared_ptr<f1Image> dstImg(new f1Image);
@@ -337,7 +336,7 @@ std::shared_ptr<baseImage> DoBlur(std::shared_ptr<baseImage> curImg, int filtWid
 // TODO: Should templatize this as tImage<tPixel<1234,ChanType> >
 std::shared_ptr<baseImage> DoChanConvert(std::shared_ptr<baseImage> curImg, int nchan)
 {
-    cerr << "Convert: from " << curImg->chan_virtual() << " to uc" << nchan << "Image\n";
+    std::cerr << "Convert: from " << curImg->chan_virtual() << " to uc" << nchan << "Image\n";
 
     if (nchan == 1) {
         if (uc3Image* uc = dynamic_cast<uc3Image*>(curImg.get())) {
@@ -366,7 +365,7 @@ std::shared_ptr<baseImage> DoChanConvert(std::shared_ptr<baseImage> curImg, int 
 
 std::shared_ptr<baseImage> DoTemplateMatchFilter(std::shared_ptr<baseImage> curImg, int iterations, int filtWid, int clearWid, float threshold)
 {
-    cerr << "TemplateMatchFilter: " << filtWid << " " << clearWid << " " << static_cast<float>(threshold) << " " << iterations << endl;
+    std::cerr << "TemplateMatchFilter: " << filtWid << " " << clearWid << " " << static_cast<float>(threshold) << " " << iterations << std::endl;
 
     for (int l = 0; l < iterations; l++) {
         int curFiltWid = (l == 0 ? filtWid : (rand() % filtWid)) | 1; // First iter is precise; rest are random
@@ -387,7 +386,7 @@ std::shared_ptr<baseImage> DoTemplateMatchFilter(std::shared_ptr<baseImage> curI
 
 std::shared_ptr<baseImage> DoDespeckle(std::shared_ptr<baseImage> curImg)
 {
-    cerr << "Despeckle\n";
+    std::cerr << "Despeckle\n";
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1Image* dstImg = new f1Image;
@@ -424,7 +423,7 @@ template <class Image_T>
 void DoMatMul(Image_T& Img, float m0, float m1, float m2, float m3, float m4, float m5, float m6, float m7, float m8, float m9, float ma, float mb, float mc,
               float md, float me, float mf)
 {
-    cerr << "Matrix multiply on pixel values\n";
+    std::cerr << "Matrix multiply on pixel values\n";
 
     float im[16] = {m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, ma, mb, mc, md, me, mf};
     Matrix44<float> Mat(im);
@@ -443,7 +442,7 @@ template void DoMatMul(f4Image& Img, float m0, float m1, float m2, float m3, flo
 
 std::shared_ptr<baseImage> DoNoise(std::shared_ptr<baseImage> curImg, float mean, float stdev)
 {
-    cerr << "Noise: " << mean << " " << stdev << '\n';
+    std::cerr << "Noise: " << mean << " " << stdev << '\n';
 
     if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
         Noise(*uc1I, mean, stdev);
@@ -460,7 +459,7 @@ std::shared_ptr<baseImage> DoNoise(std::shared_ptr<baseImage> curImg, float mean
 
 std::shared_ptr<baseImage> DoResize(std::shared_ptr<baseImage> curImg, int newWid, int newHgt)
 {
-    cerr << "Resize: " << newWid << 'x' << newHgt << endl;
+    std::cerr << "Resize: " << newWid << 'x' << newHgt << std::endl;
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1Image* dstImg = new f1Image();
@@ -531,7 +530,7 @@ std::shared_ptr<baseImage> CAResizeBranch(std::shared_ptr<baseImage> curImg, int
 
 std::shared_ptr<baseImage> DoCAResize(std::shared_ptr<baseImage> curImg, int newWid, int newHgt)
 {
-    cerr << "Content Aware Resize: " << newWid << 'x' << newHgt << endl;
+    std::cerr << "Content Aware Resize: " << newWid << 'x' << newHgt << std::endl;
     const int ITERS_PER_DIM = 16;
 
     while (curImg->w_virtual() > newWid || curImg->h_virtual() > newHgt) {
@@ -604,7 +603,7 @@ std::shared_ptr<baseImage> DoCAResize(std::shared_ptr<baseImage> curImg, int new
 
 std::shared_ptr<baseImage> DoVCD(std::shared_ptr<baseImage> curImg, int filtWid, float imageStDev, float colorStDev, int iterations)
 {
-    cerr << "VCD: " << filtWid << " " << imageStDev << " " << colorStDev << " " << iterations << endl;
+    std::cerr << "VCD: " << filtWid << " " << imageStDev << " " << colorStDev << " " << iterations << std::endl;
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1Image* dstImg = new f1Image;
@@ -622,7 +621,7 @@ std::shared_ptr<baseImage> DoVCD(std::shared_ptr<baseImage> curImg, int filtWid,
 
 template <class Image_T> void DoHorizFlatten(Image_T& dstImg, const Image_T& srcImg, const float a, const float b)
 {
-    cerr << "HorizFlatten: " << a << " " << b << '\n';
+    std::cerr << "HorizFlatten: " << a << " " << b << '\n';
 
     float* avg = new float[srcImg.h()];
     float* savg = new float[srcImg.h()];
@@ -652,7 +651,7 @@ template <class Image_T> void DoHorizFlatten(Image_T& dstImg, const Image_T& src
         float scale = savg[y] / avg[y];
         // if(y % 100 == 0)
         // scale = 0.0f;
-        // std::cerr << avg[y] << " " << savg[y] << " " << scale << '\n';
+        // std::std::cerr << avg[y] << " " << savg[y] << " " << scale << '\n';
         for (int x = 0; x < srcImg.w(); x++) {
             if (y % 100 == 0)
                 dstImg(x, y) = Image_T::PixType(0);
@@ -668,10 +667,10 @@ template void DoHorizFlatten(f3Image& dstImg, const f3Image& srcImg, const float
 
 template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, const float shrinkFac, const float biasFac)
 {
-    cerr << "Flatten: shrink " << shrinkFac << " bias " << biasFac << '\n';
+    std::cerr << "Flatten: shrink " << shrinkFac << " bias " << biasFac << '\n';
 
     // Get the blurry image by downsampling to 512x512-ish, then blurring, then bicubic upsampling.
-    cerr << "Shrinking.\n";
+    std::cerr << "Shrinking.\n";
     Image_T* shrunkImg = new Image_T(srcImg);
 
     while (shrunkImg->w() >= 512 || shrunkImg->h() >= 512) {
@@ -681,7 +680,7 @@ template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, 
         delete shrunkImg;
         shrunkImg = smallerImg;
 
-        cerr << "Shrunk to " << shrunkImg->w() << "x" << shrunkImg->h() << endl;
+        std::cerr << "Shrunk to " << shrunkImg->w() << "x" << shrunkImg->h() << std::endl;
     }
 
     int KernelSize = int(sqrtf(srcImg.w() * srcImg.h()) * shrinkFac);
@@ -691,9 +690,9 @@ template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, 
 
     Image_T blurredImg, shrunkBlurredImg;
 
-    cerr << "Blurring. shrinkFac = " << shrinkFac << " KernelSize = " << KernelSize << "\n";
+    std::cerr << "Blurring. shrinkFac = " << shrinkFac << " KernelSize = " << KernelSize << "\n";
     GaussianBlur(shrunkBlurredImg, *shrunkImg, KernelSize, KernelSize * 0.333f);
-    cerr << "Upsampling.\n";
+    std::cerr << "Upsampling.\n";
     // BlurImg will be full-size blurred.
     Resample(blurredImg, shrunkBlurredImg, srcImg.w(), srcImg.h());
 
@@ -707,7 +706,7 @@ template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, 
 
     typename Image_T::PixType Avg = csum / double(srcImg.size());
 
-    cerr << "Applying flatten. Avg = " << Avg << "\n";
+    std::cerr << "Applying flatten. Avg = " << Avg << "\n";
 
     dstImg.SetSize(blurredImg.w(), blurredImg.h());
 
@@ -725,19 +724,19 @@ template void DoFlatten(f3Image& dstImg, const f3Image& srcImg, const float shri
 // -transect 128 > fname.csv
 template <class Image_T> void DoPrintTransect(Image_T& Img, const int y)
 {
-    cerr << "Transect: y " << y << '\n';
+    std::cerr << "Transect: y " << y << '\n';
 
-    for (int x = 0; x < Img.w(); x++) { cout << x << ',' << static_cast<float>(Img(x, y).r()) << endl; }
+    for (int x = 0; x < Img.w(); x++) { std::cout << x << ',' << static_cast<float>(Img(x, y).r()) << std::endl; }
 }
 template void DoPrintTransect(uc1Image& Img, const int y);
 template void DoPrintTransect(uc3Image& Img, const int y);
 
 template <class Image_T> void DoThreshold(Image_T& Img, const typename Image_T::PixType threshold)
 {
-    cerr << "Threshold: " << threshold << '\n';
+    std::cerr << "Threshold: " << threshold << '\n';
 
     for (int i = 0; i < Img.size(); i++) {
-        for (int c = 0; c < typename Image_T::PixType::Chan; c++) {
+        for (int c = 0; c < Image_T::PixType::Chan; c++) {
             Img[i][c] = Img[i][c] >= threshold[c] ? element_traits<typename Image_T::PixType::ElType>::one() : 0;
         }
     }
@@ -765,7 +764,7 @@ template <class Image_T> float LinearMapError(const HVector<float>& OVec, void* 
         err += (vp - v).length2();
     }
 
-    // std::cerr << OVec << " Error = " << err << '\n';
+    // std::std::cerr << OVec << " Error = " << err << '\n';
     return err;
 }
 template float LinearMapError<f3Image>(const HVector<float>& OVec, void* imgp);
@@ -808,25 +807,25 @@ template <class Image_T> void DoDiff(Image_T& imgA, const Image_T& imgB, const f
     typedef typename Image_T::PixType::ElType ChType;
     typedef element_traits<ChType>::MathType MType;
     MType maxChan = 0;
-    bool printit = false;
     typename Image_T::PixType difPix;
 
     for (int y = 0; y < imgA.h(); y++) {
         for (int x = 0; x < imgA.w(); x++) {
+            bool printit = false;
             for (int c = 0; c < imgA.chan(); c++) {
                 MType cA = imgA(x, y)[c];
                 MType cB = imgB(x, y)[c];
                 MType dif = std::abs(cA - cB);
                 difPix[c] = dif;
-                if (dif > maxChan) {
+                if (dif > maxChan) { // Print each pixel if its diff is the largest so far
                     maxChan = dif;
                     printit = true;
                 }
             }
 
             if (printit) {
-                printed = true;
                 std::cerr << "(" << x << "," << y << ") " << difPix << " = " << imgA(x, y) << " - " << imgB(x, y) << '\n';
+                printit = false;
             }
 
             imgA(x, y) = static_cast<typename Image_T::PixType::FloatMathPixType>(difPix) * scale;
