@@ -8,7 +8,7 @@
 
 class ImgSlots {
 public:
-    std::shared_ptr<baseImage> get(size_t slot);
+    std::shared_ptr<baseImage> get(size_t slot, bool remove = false);
     void set(size_t slot, std::shared_ptr<baseImage> img);
 
 private:

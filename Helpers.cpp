@@ -1,20 +1,18 @@
 #include "Helpers.h"
 
-std::shared_ptr<baseImage> ImgSlots::get(size_t slot)
+std::shared_ptr<baseImage> ImgSlots::get(size_t slot, bool remove)
 {
-    std::cerr << "Pointing curImage at same image as slot " << slot << ".\n";
     if (m_slots.size() <= slot || slot < 0) throw DMcError("Slot out of range: " + std::to_string(m_slots.size()));
     if (!m_slots[slot]) throw DMcError("Slot empty");
 
     std::shared_ptr<baseImage> tmp = m_slots[slot];
-    m_slots[slot] = nullptr;
+    if (remove) m_slots[slot] = nullptr;
 
     return tmp;
 }
 
 void ImgSlots::set(size_t slot, std::shared_ptr<baseImage> img)
 {
-    std::cerr << "Storing curImage in slot " << slot << ".\n";
     if (slot < 0) throw DMcError("Slot out of range: " + std::to_string(m_slots.size()));
     if (m_slots.size() <= slot) m_slots.resize(slot + 1);
 

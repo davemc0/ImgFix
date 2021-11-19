@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-
 namespace {
 
 void Noise(uc1Image& Img, float mean, float stdev)
@@ -33,6 +32,30 @@ void Noise(uc4Image& Img, float mean, float stdev)
     for (int i = 0; i < Img.size(); i++) {
         float v = NRandf(mean, stdev);
         Img[i] = uc4Pixel(v);
+    }
+}
+
+void Noise(f1Image& Img, float mean, float stdev)
+{
+    for (int i = 0; i < Img.size(); i++) {
+        float v = NRandf(mean, stdev);
+        Img[i] = f1Pixel(v);
+    }
+}
+
+void Noise(f3Image& Img, float mean, float stdev)
+{
+    for (int i = 0; i < Img.size(); i++) {
+        float v = NRandf(mean, stdev);
+        Img[i] = f3Pixel(v);
+    }
+}
+
+void Noise(f4Image& Img, float mean, float stdev)
+{
+    for (int i = 0; i < Img.size(); i++) {
+        float v = NRandf(mean, stdev);
+        Img[i] = f4Pixel(v);
     }
 }
 
@@ -63,8 +86,17 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     ASSERT_R(sw > 0 && sh > 0);
 
     // Copy the source image into the dest image
-    std::cerr << "Copying to " << dx << ',' << dy << " from " << sx << ',' << sy << " size " << sw << 'x' << sh << " mode " << mode << " key (mode 2) " << key
-         << " alpha (mode 4) " << alpha << '\n';
+    switch (mode) {
+    case 0: std::cerr << "Copying"; break;
+    case 1: std::cerr << "Over blending with pixel alpha"; break;
+    case 2: std::cerr << "Keyed blitting (key=" << key << ')'; break;
+    case 3: std::cerr << "Adobe Multiply lerping "; break;
+    case 4: std::cerr << "Over blending (alpha=" << alpha << ')'; break;
+    case 5: std::cerr << "Adding "; break;
+    default: std::cerr << "ERROR"; break;
+    }
+
+    std::cerr << " to " << dx << ',' << dy << " from " << sx << ',' << sy << " size " << sw << 'x' << sh << " mode " << mode << '\n';
     CopyRect(*dstImg, *srcImg, sx, sy, dx, dy, sw, sh, mode, key, alpha);
 }
 
@@ -450,6 +482,12 @@ std::shared_ptr<baseImage> DoNoise(std::shared_ptr<baseImage> curImg, float mean
         Noise(*uc3I, mean, stdev);
     } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
         Noise(*uc4I, mean, stdev);
+    } else if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
+        Noise(*f1I, mean, stdev);
+    } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
+        Noise(*f3I, mean, stdev);
+    } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
+        Noise(*f4I, mean, stdev);
     } else {
         throw DMcError("Unsupported image type.\n");
     }
@@ -726,10 +764,15 @@ template <class Image_T> void DoPrintTransect(Image_T& Img, const int y)
 {
     std::cerr << "Transect: y " << y << '\n';
 
-    for (int x = 0; x < Img.w(); x++) { std::cout << x << ',' << static_cast<float>(Img(x, y).r()) << std::endl; }
+    for (int x = 0; x < Img.w(); x++) {
+        std::cout << x << ',' << static_cast<float>(Img(x, y).r()) << ',' << static_cast<float>(Img(x, y).g()) << ',' << static_cast<float>(Img(x, y).b())
+                  << std::endl;
+    }
 }
 template void DoPrintTransect(uc1Image& Img, const int y);
+template void DoPrintTransect(f1Image& Img, const int y);
 template void DoPrintTransect(uc3Image& Img, const int y);
+template void DoPrintTransect(f3Image& Img, const int y);
 
 template <class Image_T> void DoThreshold(Image_T& Img, const typename Image_T::PixType threshold)
 {

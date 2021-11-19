@@ -23,20 +23,25 @@ static void Usage(const char* message = NULL, const bool Exit = true)
     cerr << "-blur f s                   Blur filt_width img_stdev; try 5 2.0\n";
     cerr << "-chan N                     Convert image to N channel\n";
     cerr << "-comp I dx dy sx sy w h M   Composite a subrect of the given image to an arbitrary place in the cur image;\n";
-    cerr << "                                 M:0=copy 1=over blend 2=key (int) r g b a 3=multiply 4=blend alpha\n"; // TODO: Copy one channel
+    cerr << "                                 M:0=copy 1=over blend 2=key (int) r g b a 3=adobe multiply 4=over blend const "
+            "alpha 5=add\n"; // TODO: Copy one channel
     cerr << "-diff I scale               Cur = (I - Cur) * scale\n";
-    cerr << "-templatefilter f c t i     Template despeckle box_width ring_thickness threshold iters; random smaller boxes if iter>1; try 15 2 180 1\n";
+    cerr << "-templatefilter f c t i     Template despeckle box_width ring_thickness threshold iters; random smaller boxes if "
+            "iter>1; try 15 2 180 1\n";
     cerr << "-despeckle                  Clamp each pixel to be within the bounding box of its eight neighbors\n";
     cerr << "-fill r g b a               Fill image with specified color (0..255 or 0..1.0)\n";
-    cerr << "-flatten shrink bias        Flatten; shrink is blurred image rel. size; bias blends btw. bias and scale methods; try 0.1 0.5\n";
+    cerr << "-flatten shrink bias        Flatten; shrink is blurred image rel. size; bias blends btw. bias and scale methods; "
+            "try 0.1 0.5\n";
     cerr << "-flip h|v                   Flip image horizontally or vertically\n";
     cerr << "-float                      Convert image to float\n";
     cerr << "-gradient N h|v minx maxx   Set channel N to a horiz or vert gradient with 0 and 255 at given scanlines\n";
     cerr << "-hflatten a b               Flatten horizontal rows to remove scanner artifacts; ignores params\n";
+    cerr << "-makef  N w h               Make a current  fImage of N channels, width and height; fill with black\n";
     cerr << "-makeuc N w h               Make a current ucImage of N channels, width and height; fill with black\n";
     cerr << "-matmul 0123456789ab[cdef]  Multiply each pixel value by this 4x3 (for f3Image) or 4x4 (for f4Image) matrix\n";
     cerr << "-noise mean stdev           Fill image with noise\n";
-    cerr << "-resize w|'x' h|'y'|'X'     Resize the given image to w x h. Bicubic upsampling; box filter then bicubic downsampling\n";
+    cerr << "-resize w|'x' h|'y'|'X'     Resize the given image to w x h. Bicubic upsampling; box filter then bicubic "
+            "downsampling\n";
     cerr << "                                'X' => scale factor; 'x'|'y' => compute this dim\n";
     cerr << "-caresize w|'x' h|'y'|'X'   Content-Aware Resize the given image to w x h. Seam carving; currently just shrinking\n";
     cerr << "                                'X' => scale factor; 'x'|'y' => compute this dim\n";
@@ -50,8 +55,6 @@ static void Usage(const char* message = NULL, const bool Exit = true)
     cerr << "-outbin fname.bin           Dump the pixel bytes to a raw file\n";
     cerr << "-ld I                       Load image from slot I to current\n";
     cerr << "-st I                       Save a copy of curImage to slot I\n";
-
-    // TODO: Copy image into slot, delete slot
 
     if (Exit) exit(1);
 }
@@ -76,6 +79,20 @@ static void Driver(int& argc, char** argv)
             std::cerr << "Load: " << srcFName << " size=" << curImg->w_virtual() << "x" << curImg->h_virtual() << " chan=" << curImg->chan_virtual() << '\n';
 
             RemoveArgs(argc, argv, i, 2);
+        } else if (string(argv[i]) == "-makef") {
+            if (argc <= i + 3) Usage();
+
+            int chan = atoi(argv[i + 1]), w = atoi(argv[i + 2]), h = atoi(argv[i + 3]);
+
+            cerr << "Make: f" << chan << "Image\n";
+
+            std::shared_ptr<baseImage> newImg = NULL;
+            if (chan == 1) newImg = std::shared_ptr<baseImage>(new f1Image(w, h, f1Pixel(0)));
+            if (chan == 3) newImg = std::shared_ptr<baseImage>(new f3Image(w, h, f3Pixel(0)));
+            if (chan == 4) newImg = std::shared_ptr<baseImage>(new f4Image(w, h, f4Pixel(0)));
+            curImg = newImg;
+
+            RemoveArgs(argc, argv, i, 4);
         } else if (string(argv[i]) == "-makeuc") {
             if (argc <= i + 3) Usage();
 
@@ -116,7 +133,7 @@ static void Driver(int& argc, char** argv)
             int subArgc = 0;
             if (mode == 2) {
                 subArgc = curImg->chan_virtual();
-                if (argc <= i + 8 + subArgc) Usage("Need ints for each channel for key color");
+                if (argc <= i + 8 + subArgc) Usage(("Need " + std::to_string(subArgc) + " ints for key color channels.").c_str());
                 for (int c = 0; c < subArgc; c++) { key[c] = atoi(argv[i + 9 + c]); }
             } else if (mode == 4) {
                 subArgc = 1;
@@ -200,6 +217,10 @@ static void Driver(int& argc, char** argv)
                 DoPrintTransect(*uc1I, yval);
             } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
                 DoPrintTransect(*uc3I, yval);
+            } else if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
+                DoPrintTransect(*f1I, yval);
+            } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
+                DoPrintTransect(*f3I, yval);
             } else {
                 throw DMcError("Unsupported image type.\n");
             }
@@ -415,12 +436,14 @@ static void Driver(int& argc, char** argv)
         } else if (string(argv[i]) == "-ld") {
             if (argc <= i + 1) Usage();
             int slot = atoi(argv[i + 1]);
-            curImg = Slots.get(slot);
+            std::cerr << "Getting image from slot " << slot << ".\n";
+            curImg = Slots.get(slot, true);
 
             RemoveArgs(argc, argv, i, 2);
         } else if (string(argv[i]) == "-st") {
             if (argc <= i + 1) Usage();
             int slot = atoi(argv[i + 1]);
+            std::cerr << "Storing copy of curImage in slot " << slot << ".\n";
             Slots.set(slot, std::shared_ptr<baseImage>(curImg->Copy()));
 
             RemoveArgs(argc, argv, i, 2);
