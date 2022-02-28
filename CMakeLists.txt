@@ -11,8 +11,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(PROJECT_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# warning level 4 and all warnings as errors
-# add_compile_options(/W3 /WX)
+# warning level and all warnings as errors
+add_compile_options(/W3 /WX)
 # build in parallel
 add_compile_options(/MP)
 # disable security warnings
@@ -39,7 +39,7 @@ set(SOURCES
 
 source_group("src"  FILES ${SOURCES})
 
-add_subdirectory(${PROJECT_ROOT_DIR}/../DMcTools ${CMAKE_CURRENT_BINARY_DIR}/../../../DMcTools)
+add_subdirectory(${PROJECT_ROOT_DIR}/../DMcTools ${CMAKE_CURRENT_BINARY_DIR}/DMcTools)
 
 add_executable(ImgFix ${SOURCES})
 

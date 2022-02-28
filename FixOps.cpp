@@ -70,13 +70,13 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     if (sw <= 0) sw = 100000; // If sw and sh are unspecified it indicates maximum size
     if (sh <= 0) sh = 100000;
 
-    // clip source box to source image
+    // Clip source box to source image
     int nsw = srcImg->w_virtual();
     int nsh = srcImg->h_virtual();
     if (sx + sw > nsw) sw = nsw - sx;
     if (sy + sh > nsh) sh = nsh - sy;
 
-    // clip source box to dest image
+    // Clip source box to dest image
     int ndw = dstImg->w_virtual();
     int ndh = dstImg->h_virtual();
     if (dx + sw > ndw) sw = ndw - dx;
@@ -458,7 +458,7 @@ void DoMatMul(Image_T& Img, float m0, float m1, float m2, float m3, float m4, fl
     std::cerr << "Matrix multiply on pixel values\n";
 
     float im[16] = {m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, ma, mb, mc, md, me, mf};
-    Matrix44<float> Mat(im);
+    Matrix44<f3vec> Mat(im);
 
     // Modifies image in place
     for (int p = 0; p < Img.size(); p++) {
@@ -794,17 +794,17 @@ template <class Image_T> float LinearMapError(const HVector<float>& OVec, void* 
 
     Image_T& Img = *reinterpret_cast<Image_T*>(imgp);
 
-    f3Vector v0(OVec[0], OVec[1], OVec[2]), v1(OVec[3], OVec[4], OVec[5]);
+    f3vec v0(OVec[0], OVec[1], OVec[2]), v1(OVec[3], OVec[4], OVec[5]);
     float err = 0;
 
-    f3Vector dir = v1 - v0;
+    f3vec dir = v1 - v0;
     dir.normalize();
 
     for (int i = 0; i < Img.size(); i++) {
-        f3Vector v(Img[i].r(), Img[i].g(), Img[i].b());
-        f3Vector vv0 = v - v0;
-        f3Vector vp = dir * Dot(dir, vv0) + v0;
-        err += (vp - v).length2();
+        f3vec v(Img[i].r(), Img[i].g(), Img[i].b());
+        f3vec vv0 = v - v0;
+        f3vec vp = dir * dot(dir, vv0) + v0;
+        err += (vp - v).lenSqr();
     }
 
     // std::std::cerr << OVec << " Error = " << err << '\n';
@@ -828,14 +828,14 @@ template void DoOptimizeLinearMap(const f4Image& Img);
 // Compute the two endpoints in RGB color space of a gradient that's the best fit color map for the pixels in Img
 template <class Image_T> void DoLinearMap(Image_T& Img, const f3Pixel p0, const f3Pixel p1)
 {
-    f3Vector v0(p0.r(), p0.g(), p0.b()), v1(p1.r(), p1.g(), p1.b());
-    f3Vector dir = v1 - v0;
+    f3vec v0(p0.r(), p0.g(), p0.b()), v1(p1.r(), p1.g(), p1.b());
+    f3vec dir = v1 - v0;
     dir.normalize();
 
     for (int i = 0; i < Img.size(); i++) {
-        f3Vector v(Img[i].r(), Img[i].g(), Img[i].b());
-        f3Vector vv0 = v - v0;
-        f3Vector vp = dir * Dot(dir, vv0) + v0;
+        f3vec v(Img[i].r(), Img[i].g(), Img[i].b());
+        f3vec vv0 = v - v0;
+        f3vec vp = dir * dot(dir, vv0) + v0;
 
         Img[i][0] = vp[0];
         Img[i][1] = vp[1];
