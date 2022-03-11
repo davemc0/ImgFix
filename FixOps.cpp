@@ -11,51 +11,11 @@
 
 namespace {
 
-void Noise(uc1Image& Img, float mean, float stdev)
+template <class Image_T> void Noise(Image_T& Img, float mean, float stdev)
 {
     for (int i = 0; i < Img.size(); i++) {
         float v = NRandf(mean, stdev);
-        Img[i] = uc1Pixel(v);
-    }
-}
-
-void Noise(uc3Image& Img, float mean, float stdev)
-{
-    for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
-        Img[i] = uc3Pixel(v);
-    }
-}
-
-void Noise(uc4Image& Img, float mean, float stdev)
-{
-    for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
-        Img[i] = uc4Pixel(v);
-    }
-}
-
-void Noise(f1Image& Img, float mean, float stdev)
-{
-    for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
-        Img[i] = f1Pixel(v);
-    }
-}
-
-void Noise(f3Image& Img, float mean, float stdev)
-{
-    for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
-        Img[i] = f3Pixel(v);
-    }
-}
-
-void Noise(f4Image& Img, float mean, float stdev)
-{
-    for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
-        Img[i] = f4Pixel(v);
+        Img[i] = typename Image_T::PixType(v);
     }
 }
 
@@ -93,6 +53,7 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     case 3: std::cerr << "Adobe Multiply lerping "; break;
     case 4: std::cerr << "Over blending (alpha=" << alpha << ')'; break;
     case 5: std::cerr << "Adding "; break;
+    case 6: std::cerr << "Copying channel " << key[0]; break;
     default: std::cerr << "ERROR"; break;
     }
 
@@ -100,62 +61,59 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     CopyRect(*dstImg, *srcImg, sx, sy, dx, dy, sw, sh, mode, key, alpha);
 }
 
+// True if all channels are below threshold
 template <class Pixel_T> inline bool isDark(const typename Pixel_T p, const typename Pixel_T::ElType threshold)
 {
-    for (int c = 0; c < Pixel_T::Chan; c++) {
-        if (p[c] > threshold) { return false; }
-    }
+    for (int c = 0; c < Pixel_T::Chan; c++)
+        if (p[c] > threshold) return false;
+
     return true;
 }
 
-// Search a ring around each pixel; if the ring is all in the dark range then paint the insides dark
+// Search a ring around each pixel; if the ring is all light then paint the box inside the ring light
+// Good for removing isolated dark speckles within a light background
 template <class Image_T>
-void TemplateMatchFilter(Image_T& dstImg, const Image_T& srcImg, const int filtWid, const int clearWid, const typename Image_T::PixType::ElType threshold)
+void RingDespeckleFilter(Image_T& dstImg, const Image_T& srcImg, const int filtWid, const int ringThick, const typename Image_T::PixType::ElType threshold)
 {
-    const int NF = filtWid / 2;
-    const int NC = NF - clearWid;
+    const int NF = filtWid / 2;    // NF is outer radius
+    const int NC = NF - ringThick; // NC is inner radius
 
-    typename Image_T::PixType fillColor(0);
     dstImg.SetSize(srcImg.w(), srcImg.h());
+    typename Image_T::PixType fillColor(0);
     dstImg.fill(fillColor);
 
     for (int y = 0; y < srcImg.h(); y++) {
         for (int x = 0; x < srcImg.w(); x++) {
-            // See if the center pixel is dark
-            if (!isDark(srcImg(x, y), threshold)) {
-                // If not overwriting a clear
-                if (dstImg(x, y) == fillColor) {
-                    dstImg(x, y) = typename Image_T::PixType(element_traits<typename Image_T::PixType::ElType>::one());
-                    // dstImg(x,y) = srcImg(x,y);
-                }
-                continue; // Not a speckle
-            }
+            if (dstImg(x, y) != fillColor) continue; // Already been set as part of a previous speckle
+            dstImg(x, y) = srcImg(x, y);
+            if (!isDark(srcImg(x, y), threshold)) continue; // If not dark then no need to check the ring
 
             // See whether this pixel is a speckle or an object
-            //      dstImg(x,y) = typename Image_T::PixType(threshold);
-            dstImg(x, y) = srcImg(x, y);
+            bool ringIsLight = true;
+            typename Image_T::PixType::MathPixType ringColorAccum(0);
+            typename Image_T::PixType::MathType ringPixCount = 0;
 
-            bool ringIsClear = true;
-            typename Image_T::PixType ringColor;
-            for (int by = y - NF; by <= y + NF; by++) {
+            for (int by = y - NF; by <= y + NF && ringIsLight; by++) {
                 if (by < 0 || by >= srcImg.h()) continue;
-                for (int bx = x - NF; bx <= x + NF; bx++) {
+                for (int bx = x - NF; bx <= x + NF && ringIsLight; bx++) {
                     if (bx < 0 || bx >= srcImg.w()) continue;
-                    if (abs(y - by) >= NC || abs(x - bx) >= NC) { // Outer ring
-                        ringIsClear = ringIsClear && !isDark(srcImg(bx, by), threshold);
-                        ringColor = srcImg(bx, by); // Set ringColor to the last pixel in the ring? Prob. should average these.
+
+                    if (abs(y - by) >= NC || abs(x - bx) >= NC) { // If template pixel is in outer ring
+                        ringIsLight = ringIsLight && !isDark(srcImg(bx, by), threshold);
+                        ringColorAccum += static_cast<typename Image_T::PixType::MathPixType>(srcImg(bx, by));
+                        ringPixCount++;
                     }
                 }
             }
 
-            if (ringIsClear) {
+            if (ringIsLight) {
+                // Paint the whole center box inside the ring
+                typename Image_T::PixType ringColor = ringColorAccum / ringPixCount;
                 for (int by = y - NC; by <= y + NC; by++) {
                     if (by < 0 || by >= srcImg.h()) continue;
                     for (int bx = x - NC; bx <= x + NC; bx++) {
                         if (bx < 0 || bx >= srcImg.w()) continue;
-                        // dstImg(bx,by) = ringColor;
-                        dstImg(bx, by) = typename Image_T::PixType(
-                            element_traits<typename Image_T::PixType::ElType>::one()); // For debugging just paint the center box white
+                        dstImg(bx, by) = ringColor;
                     }
                 }
             }
@@ -189,7 +147,7 @@ template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In
         for (int x = 0; x < iw - 1; x++) { PixEnergy(x, y) = (Abs<float, chan>(static_cast<FPT>(In(x, y)) - static_cast<FPT>(In(x + 1, y))).sum_chan()); }
         PixEnergy(iw - 1, y) = 255.0f;
     }
-    // PixEnergy.Save(std::string("Pix" + to_string(PixEnergy.w()) + "x" + to_string(PixEnergy.h()) + ".png").c_str());
+    // PixEnergy.Save(std::string("Pix" + std::to_string(PixEnergy.w()) + "x" + std::to_string(PixEnergy.h()) + ".png").c_str());
 
     f1Image CumPixEnergy(iw, ih);
     for (int x = 0; x < iw; x++) CumPixEnergy(x, 0) = PixEnergy(x, 0);
@@ -200,7 +158,7 @@ template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In
         }
         CumPixEnergy(iw - 1, y) = PixEnergy(iw - 1, y) + std::min(CumPixEnergy(iw - 2, y - 1), CumPixEnergy(iw - 1, y - 1));
     }
-    // CumPixEnergy.Save(std::string("Cum" + to_string(CumPixEnergy.w()) + "x" + to_string(CumPixEnergy.h()) + ".png").c_str());
+    // CumPixEnergy.Save(std::string("Cum" + std::to_string(CumPixEnergy.w()) + "x" + std::to_string(CumPixEnergy.h()) + ".png").c_str());
 
     // Count number of minimum paths
     int cntmin = 0;
@@ -235,7 +193,7 @@ template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In
         if (y > 0 && xi < iw - 1 && CumPixEnergy(xi + 1, y - 1) < CumPixEnergy(xn, y - 1)) xn = xi + 1;
         xi = xn;
     }
-    // Out.Save(std::string("Out" + to_string(Out.w()) + "x" + to_string(Out.h()) + ".png").c_str());
+    // Out.Save(std::string("Out" + std::to_string(Out.w()) + "x" + std::to_string(Out.h()) + ".png").c_str());
 }
 }; // namespace
 
@@ -365,29 +323,21 @@ std::shared_ptr<baseImage> DoBlur(std::shared_ptr<baseImage> curImg, int filtWid
     return curImg;
 }
 
-// TODO: Should templatize this as tImage<tPixel<1234,ChanType> >
-std::shared_ptr<baseImage> DoChanConvert(std::shared_ptr<baseImage> curImg, int nchan)
+std::shared_ptr<baseImage> DoGrow(std::shared_ptr<baseImage> curImg)
 {
-    std::cerr << "Convert: from " << curImg->chan_virtual() << " to uc" << nchan << "Image\n";
+    std::cerr << "Grow black region" << std::endl;
 
-    if (nchan == 1) {
-        if (uc3Image* uc = dynamic_cast<uc3Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc1Image(*uc));
-        } else if (uc4Image* uc = dynamic_cast<uc4Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc1Image(*uc));
-        }
-    } else if (nchan == 3) {
-        if (uc1Image* uc = dynamic_cast<uc1Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc3Image(*uc));
-        } else if (uc4Image* uc = dynamic_cast<uc4Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc3Image(*uc));
-        }
-    } else if (nchan == 4) {
-        if (uc1Image* uc = dynamic_cast<uc1Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc4Image(*uc));
-        } else if (uc3Image* uc = dynamic_cast<uc3Image*>(curImg.get())) {
-            curImg = std::shared_ptr<baseImage>(new uc4Image(*uc));
-        }
+    if (std::shared_ptr<f1Image> srcIm = dynamic_pointer_cast<f1Image>(curImg)) {
+        f1Image* dstIm(new f1Image(srcIm->w(), srcIm->h()));
+        for (int y = 0; y < srcIm->h(); y++)
+            for (int x = 0; x < srcIm->w(); x++) {
+                bool nearBlack = false;
+                for (int sy = std::max(0, y - 1); sy <= y + 1 && sy < srcIm->h(); sy++)
+                    for (int sx = std::max(0, x - 1); sx <= x + 1 && sx < srcIm->w(); sx++) // If I have a black neighbor set me to black
+                        nearBlack = nearBlack || ((*srcIm)(sx, sy) < 0.5f);
+                (*dstIm)(x, y) = nearBlack ? f1Pixel(0.f) : (*srcIm)(x, y);
+            }
+        return std::shared_ptr<baseImage>(dstIm);
     } else {
         throw DMcError("Unsupported image type.\n");
     }
@@ -395,19 +345,57 @@ std::shared_ptr<baseImage> DoChanConvert(std::shared_ptr<baseImage> curImg, int 
     return curImg;
 }
 
-std::shared_ptr<baseImage> DoTemplateMatchFilter(std::shared_ptr<baseImage> curImg, int iterations, int filtWid, int clearWid, float threshold)
+namespace {
+template <class Elem_T, int srcChan> std::shared_ptr<baseImage> SrcChanConv(const tImage<tPixel<Elem_T, srcChan>>* src, int dstChan)
 {
-    std::cerr << "TemplateMatchFilter: " << filtWid << " " << clearWid << " " << static_cast<float>(threshold) << " " << iterations << std::endl;
+    std::cerr << "ChanConv " << srcChan << " to " << dstChan << " channel " << typeid(Elem_T).name() << " image\n";
+
+    switch (dstChan) {
+    case 1: return std::shared_ptr<baseImage>(new tImage<tPixel<Elem_T, 1>>(*src)); break;
+    case 2: return std::shared_ptr<baseImage>(new tImage<tPixel<Elem_T, 2>>(*src)); break;
+    case 3: return std::shared_ptr<baseImage>(new tImage<tPixel<Elem_T, 3>>(*src)); break;
+    case 4: return std::shared_ptr<baseImage>(new tImage<tPixel<Elem_T, 4>>(*src)); break;
+    default: return std::shared_ptr<baseImage>(new tImage<tPixel<Elem_T, 1>>(*src)); break;
+    }
+}
+
+template <class Elem_T> std::shared_ptr<baseImage> ElTypeConv(const std::shared_ptr<baseImage> curImg, int dstChan)
+{
+    switch (curImg->chan_virtual()) {
+    case 1: return SrcChanConv<Elem_T, 1>(dynamic_cast<tImage<tPixel<Elem_T, 1>>*>(curImg.get()), dstChan); break;
+    case 2: return SrcChanConv<Elem_T, 2>(dynamic_cast<tImage<tPixel<Elem_T, 2>>*>(curImg.get()), dstChan); break;
+    case 3: return SrcChanConv<Elem_T, 3>(dynamic_cast<tImage<tPixel<Elem_T, 3>>*>(curImg.get()), dstChan); break;
+    case 4: return SrcChanConv<Elem_T, 4>(dynamic_cast<tImage<tPixel<Elem_T, 4>>*>(curImg.get()), dstChan); break;
+    default: return SrcChanConv<Elem_T, 1>(dynamic_cast<tImage<tPixel<Elem_T, 1>>*>(curImg.get()), dstChan); break;
+    }
+}
+} // namespace
+
+std::shared_ptr<baseImage> DoChanConvert(std::shared_ptr<baseImage> curImg, int dstChan)
+{
+    baseImage* cI = curImg.get();
+    if (cI->size_element_virtual() == 4 && !cI->is_integer_virtual()) return ElTypeConv<float>(curImg, dstChan);
+    if (cI->size_element_virtual() == 1 && cI->is_integer_virtual()) return ElTypeConv<unsigned char>(curImg, dstChan);
+
+    throw DMcError("Unsupported image element type.\n");
+
+    return curImg;
+}
+
+std::shared_ptr<baseImage> DoRingDespeckleFilter(std::shared_ptr<baseImage> curImg, int filtWid, int ringThick, float threshold, int iterations)
+{
+    std::cerr << "RingDespeckleFilter: " << filtWid << " " << ringThick << " " << threshold << " " << iterations << std::endl;
 
     for (int l = 0; l < iterations; l++) {
         int curFiltWid = (l == 0 ? filtWid : (rand() % filtWid)) | 1; // First iter is precise; rest are random
+
         if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
             uc1Image* dstImg = new uc1Image;
-            TemplateMatchFilter(*dstImg, *uc1I, curFiltWid, clearWid, static_cast<unsigned char>(threshold));
+            RingDespeckleFilter(*dstImg, *uc1I, curFiltWid, ringThick, static_cast<unsigned char>(threshold));
             curImg = std::shared_ptr<baseImage>(dstImg);
         } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
             uc3Image* dstImg = new uc3Image;
-            TemplateMatchFilter(*dstImg, *uc3I, filtWid, clearWid, static_cast<unsigned char>(threshold));
+            RingDespeckleFilter(*dstImg, *uc3I, curFiltWid, ringThick, static_cast<unsigned char>(threshold));
             curImg = std::shared_ptr<baseImage>(dstImg);
         } else {
             throw DMcError("Unsupported image type.\n");
@@ -422,27 +410,27 @@ std::shared_ptr<baseImage> DoDespeckle(std::shared_ptr<baseImage> curImg)
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1Image* dstImg = new f1Image;
-        DeSpeckle(*dstImg, *f1I);
+        Despeckle(*dstImg, *f1I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
         f3Image* dstImg = new f3Image;
-        DeSpeckle(*dstImg, *f3I);
+        Despeckle(*dstImg, *f3I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
         f4Image* dstImg = new f4Image;
-        DeSpeckle(*dstImg, *f4I);
+        Despeckle(*dstImg, *f4I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
         uc1Image* dstImg = new uc1Image;
-        DeSpeckle(*dstImg, *uc1I);
+        Despeckle(*dstImg, *uc1I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
         uc3Image* dstImg = new uc3Image;
-        DeSpeckle(*dstImg, *uc3I);
+        Despeckle(*dstImg, *uc3I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
         uc4Image* dstImg = new uc4Image;
-        DeSpeckle(*dstImg, *uc4I);
+        Despeckle(*dstImg, *uc4I);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else {
         throw DMcError("Unsupported image type.\n");
@@ -566,9 +554,9 @@ std::shared_ptr<baseImage> CAResizeBranch(std::shared_ptr<baseImage> curImg, int
     return curImg;
 }
 
-std::shared_ptr<baseImage> DoCAResize(std::shared_ptr<baseImage> curImg, int newWid, int newHgt)
+std::shared_ptr<baseImage> DoResizeCA(std::shared_ptr<baseImage> curImg, int newWid, int newHgt)
 {
-    std::cerr << "Content Aware Resize: " << newWid << 'x' << newHgt << std::endl;
+    std::cerr << "Content-Aware Resize: " << newWid << 'x' << newHgt << std::endl;
     const int ITERS_PER_DIM = 16;
 
     while (curImg->w_virtual() > newWid || curImg->h_virtual() > newHgt) {
@@ -657,7 +645,7 @@ std::shared_ptr<baseImage> DoVCD(std::shared_ptr<baseImage> curImg, int filtWid,
     return curImg;
 }
 
-template <class Image_T> void DoHorizFlatten(Image_T& dstImg, const Image_T& srcImg, const float a, const float b)
+template <class Image_T> void DoFlattenHoriz(Image_T& dstImg, const Image_T& srcImg, const float a, const float b)
 {
     std::cerr << "HorizFlatten: " << a << " " << b << '\n';
 
@@ -689,7 +677,7 @@ template <class Image_T> void DoHorizFlatten(Image_T& dstImg, const Image_T& src
         float scale = savg[y] / avg[y];
         // if(y % 100 == 0)
         // scale = 0.0f;
-        // std::std::cerr << avg[y] << " " << savg[y] << " " << scale << '\n';
+        // std::cerr << avg[y] << " " << savg[y] << " " << scale << '\n';
         for (int x = 0; x < srcImg.w(); x++) {
             if (y % 100 == 0)
                 dstImg(x, y) = Image_T::PixType(0);
@@ -700,8 +688,8 @@ template <class Image_T> void DoHorizFlatten(Image_T& dstImg, const Image_T& src
 
     delete[] avg;
 }
-template void DoHorizFlatten(f1Image& dstImg, const f1Image& srcImg, const float a, const float b);
-template void DoHorizFlatten(f3Image& dstImg, const f3Image& srcImg, const float a, const float b);
+template void DoFlattenHoriz(f1Image& dstImg, const f1Image& srcImg, const float a, const float b);
+template void DoFlattenHoriz(f3Image& dstImg, const f3Image& srcImg, const float a, const float b);
 
 template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, const float shrinkFac, const float biasFac)
 {
@@ -807,7 +795,7 @@ template <class Image_T> float LinearMapError(const HVector<float>& OVec, void* 
         err += (vp - v).lenSqr();
     }
 
-    // std::std::cerr << OVec << " Error = " << err << '\n';
+    // std::cerr << OVec << " Error = " << err << '\n';
     return err;
 }
 template float LinearMapError<f3Image>(const HVector<float>& OVec, void* imgp);
