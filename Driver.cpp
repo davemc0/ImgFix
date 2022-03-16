@@ -73,11 +73,13 @@ static void Driver(int& argc, char** argv)
     if (argc < 2) Usage();
 
     for (int i = 1; i < argc; i++) {
+        std::string starg(argv[i]);
+
         if (curImg) std::cerr << "curImg: " << (*curImg) << '\n';
 
-        if (std::string(argv[i]) == "-h" || std::string(argv[i]) == "-help") {
+        if (starg == "-h" || starg == "-help") {
             Usage();
-        } else if (std::string(argv[i]) == "-in") {
+        } else if (starg == "-in") {
             if (argc <= i + 1) Usage();
 
             std::string srcFName(argv[i + 1]);
@@ -85,7 +87,7 @@ static void Driver(int& argc, char** argv)
             std::cerr << "Load: " << srcFName << " size=" << curImg->w_virtual() << "x" << curImg->h_virtual() << " chan=" << curImg->chan_virtual() << '\n';
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-makef") {
+        } else if (starg == "-makef") {
             if (argc <= i + 3) Usage();
 
             int chan = atoi(argv[i + 1]), w = atoi(argv[i + 2]), h = atoi(argv[i + 3]);
@@ -99,7 +101,7 @@ static void Driver(int& argc, char** argv)
             curImg = newImg;
 
             RemoveArgs(argc, argv, i, 4);
-        } else if (std::string(argv[i]) == "-makeuc") {
+        } else if (starg == "-makeuc") {
             if (argc <= i + 3) Usage();
 
             int chan = atoi(argv[i + 1]), w = atoi(argv[i + 2]), h = atoi(argv[i + 3]);
@@ -113,14 +115,14 @@ static void Driver(int& argc, char** argv)
             curImg = newImg;
 
             RemoveArgs(argc, argv, i, 4);
-        } else if (std::string(argv[i]) == "-noise") {
+        } else if (starg == "-noise") {
             if (argc <= i + 2) Usage();
 
             float mean = atof(argv[i + 1]), stdev = atof(argv[i + 2]);
             curImg = DoNoise(curImg, mean, stdev);
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-fill") {
+        } else if (starg == "-fill") {
             if (argc <= i + 4) Usage();
             float r = atof(argv[i + 1]);
             float g = atof(argv[i + 2]);
@@ -129,7 +131,7 @@ static void Driver(int& argc, char** argv)
             DoFill(curImg, r, g, b, a);
 
             RemoveArgs(argc, argv, i, 5);
-        } else if (std::string(argv[i]) == "-comp") {
+        } else if (starg == "-comp") {
             if (argc <= i + 8) Usage();
             int dx = atoi(argv[i + 2]), dy = atoi(argv[i + 3]), sx = atoi(argv[i + 4]), sy = atoi(argv[i + 5]);
             int sw = atoi(argv[i + 6]), sh = atoi(argv[i + 7]), mode = atoi(argv[i + 8]);
@@ -154,7 +156,7 @@ static void Driver(int& argc, char** argv)
             DoCopyBlock(curImg, Slots.get(atoi(argv[i + 1])), dx, dy, sx, sy, sw, sh, mode, key, alpha);
 
             RemoveArgs(argc, argv, i, 9 + subArgc);
-        } else if (std::string(argv[i]) == "-diff") {
+        } else if (starg == "-diff") {
             if (argc <= i + 2) Usage();
             float scale = atof(argv[i + 2]);
 
@@ -186,7 +188,7 @@ static void Driver(int& argc, char** argv)
                 throw DMcError("Unsupported image type.\n");
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-matmul") {
+        } else if (starg == "-matmul") {
             int subArgc = 0;
             if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
                 subArgc = 12;
@@ -204,7 +206,7 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, subArgc + 1);
-        } else if (std::string(argv[i]) == "-gradient") {
+        } else if (starg == "-gradient") {
             // Modifies image in place
             if (argc <= i + 4) Usage();
             int c = atoi(argv[i + 1]), minx = atoi(argv[i + 3]), maxx = atoi(argv[i + 4]);
@@ -214,17 +216,17 @@ static void Driver(int& argc, char** argv)
             DoGradient(curImg, c, isVert, minx, maxx);
 
             RemoveArgs(argc, argv, i, 5);
-        } else if (std::string(argv[i]) == "-grow") {
+        } else if (starg == "-grow") {
             curImg = DoGrow(curImg);
 
             RemoveArgs(argc, argv, i);
-        } else if (std::string(argv[i]) == "-flip") {
+        } else if (starg == "-flip") {
             if (argc <= i + 1) Usage();
             bool isVert = (argv[i + 1][0] == 'v' || argv[i + 1][0] == 'V');
             DoFlip(curImg, isVert);
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-transect") {
+        } else if (starg == "-transect") {
             if (argc <= i + 1) Usage();
             int yval = atoi(argv[i + 1]);
 
@@ -241,7 +243,7 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-flatten") {
+        } else if (starg == "-flatten") {
             if (argc <= i + 2) Usage();
             float shrinkFac = atof(argv[i + 1]);
             float biasFac = atof(argv[i + 2]);
@@ -260,7 +262,7 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-flattenh") {
+        } else if (starg == "-flattenh") {
             if (argc <= i + 2) Usage();
             float a = atof(argv[i + 1]);
             float b = atof(argv[i + 2]);
@@ -279,12 +281,12 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-chan") {
+        } else if (starg == "-chan") {
             if (argc <= i + 1) Usage();
             curImg = DoChanConvert(curImg, atoi(argv[i + 1]));
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-float") {
+        } else if (starg == "-float") {
             std::cerr << "Convert: to float\n";
             if (uc1Image* uc = dynamic_cast<uc1Image*>(curImg.get()))
                 curImg = std::shared_ptr<baseImage>(new f1Image(*uc));
@@ -298,7 +300,7 @@ static void Driver(int& argc, char** argv)
                 throw DMcError("Unsupported image type.\n");
 
             RemoveArgs(argc, argv, i);
-        } else if (std::string(argv[i]) == "-uchar") {
+        } else if (starg == "-uchar") {
             std::cerr << "Convert: to uchar\n";
             if (f1Image* f = dynamic_cast<f1Image*>(curImg.get()))
                 curImg = std::shared_ptr<baseImage>(new uc1Image(*f));
@@ -312,7 +314,7 @@ static void Driver(int& argc, char** argv)
                 throw DMcError("Unsupported image type.\n");
 
             RemoveArgs(argc, argv, i);
-        } else if (std::string(argv[i]) == "-sp") {
+        } else if (starg == "-sp") {
             std::cerr << "LoadSaveParams:"
                       << " maxColorPalette=" << SP.QP.maxColorPalette << " maxItersFast=" << SP.QP.maxItersFast << " maxIters=" << SP.QP.maxIters
                       << " targetErr=" << SP.QP.targetErr << " makeArtisticPalette=" << SP.QP.makeArtisticPalette << '\n';
@@ -325,7 +327,7 @@ static void Driver(int& argc, char** argv)
             SP.QP.makeArtisticPalette = atoi(argv[i + 5]);
 
             RemoveArgs(argc, argv, i, 6);
-        } else if (std::string(argv[i]) == "-threshold") {
+        } else if (starg == "-threshold") {
             if (argc <= i + 1) Usage();
             float threshold = atof(argv[i + 1]);
 
@@ -340,7 +342,7 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-resize") {
+        } else if (starg == "-resize") {
             if (argc <= i + 2) Usage();
 
             int newWid = atoi(argv[i + 1]);
@@ -359,7 +361,7 @@ static void Driver(int& argc, char** argv)
             curImg = DoResize(curImg, newWid, newHgt);
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-resizeca") {
+        } else if (starg == "-resizeca") {
             if (argc <= i + 2) Usage();
 
             int newWid = atoi(argv[i + 1]);
@@ -378,7 +380,7 @@ static void Driver(int& argc, char** argv)
             curImg = DoResizeCA(curImg, newWid, newHgt);
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-blur") {
+        } else if (starg == "-blur") {
             if (argc <= i + 2) Usage();
 
             int filtWid = atoi(argv[i + 1]);
@@ -386,7 +388,7 @@ static void Driver(int& argc, char** argv)
             curImg = DoBlur(curImg, filtWid, imageStDev);
 
             RemoveArgs(argc, argv, i, 3);
-        } else if (std::string(argv[i]) == "-vcd") {
+        } else if (starg == "-vcd") {
             if (argc <= i + 4) Usage();
 
             int filtWid = atoi(argv[i + 1]);
@@ -396,7 +398,7 @@ static void Driver(int& argc, char** argv)
             curImg = DoVCD(curImg, filtWid, imageStDev, colorStDev, iterations);
 
             RemoveArgs(argc, argv, i, 5);
-        } else if (std::string(argv[i]) == "-despecklering") {
+        } else if (starg == "-despecklering") {
             if (argc <= i + 4) Usage();
 
             int filtWid = atoi(argv[i + 1]);
@@ -406,7 +408,7 @@ static void Driver(int& argc, char** argv)
             curImg = DoRingDespeckleFilter(curImg, filtWid, ringThick, threshold, iterations);
 
             RemoveArgs(argc, argv, i, 5);
-        } else if (std::string(argv[i]) == "-findlinmap") {
+        } else if (starg == "-findlinmap") {
             if (argc <= i) Usage();
 
             if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
@@ -418,7 +420,7 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 7);
-        } else if (std::string(argv[i]) == "-linmap") {
+        } else if (starg == "-linmap") {
             if (argc <= i + 6) Usage();
 
             float r0 = atof(argv[i + 1]);
@@ -436,13 +438,13 @@ static void Driver(int& argc, char** argv)
             }
 
             RemoveArgs(argc, argv, i, 7);
-        } else if (std::string(argv[i]) == "-despeckle") {
+        } else if (starg == "-despeckle") {
             if (argc <= i + 0) Usage();
 
             curImg = DoDespeckle(curImg);
 
             RemoveArgs(argc, argv, i, 1);
-        } else if (std::string(argv[i]) == "-out") {
+        } else if (starg == "-out") {
             if (argc <= i + 1) Usage();
 
             std::string dstFName(argv[i + 1]);
@@ -450,14 +452,14 @@ static void Driver(int& argc, char** argv)
             curImg->Save(dstFName.c_str(), SP);
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-ld") {
+        } else if (starg == "-ld") {
             if (argc <= i + 1) Usage();
             int slot = atoi(argv[i + 1]);
             std::cerr << "Getting image from slot " << slot << ".\n";
             curImg = Slots.get(slot, true);
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (std::string(argv[i]) == "-st") {
+        } else if (starg == "-st") {
             if (argc <= i + 1) Usage();
             int slot = atoi(argv[i + 1]);
             std::cerr << "Storing copy of curImage in slot " << slot << ".\n";
@@ -465,7 +467,7 @@ static void Driver(int& argc, char** argv)
 
             RemoveArgs(argc, argv, i, 2);
         } else {
-            Usage(("Unknown option:" + std::string(argv[i])).c_str());
+            Usage(("Unknown option:" + starg).c_str());
         }
     }
 }
