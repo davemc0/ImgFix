@@ -83,7 +83,7 @@ static void Driver(int& argc, char** argv)
             if (argc <= i + 1) Usage();
 
             std::string srcFName(argv[i + 1]);
-            curImg = std::shared_ptr<baseImage>(LoadtImage(srcFName.c_str()));
+            curImg = std::shared_ptr<baseImage>(LoadtImage(srcFName));
             std::cerr << "Load: " << srcFName << " size=" << curImg->w_virtual() << "x" << curImg->h_virtual() << " chan=" << curImg->chan_virtual() << '\n';
 
             RemoveArgs(argc, argv, i, 2);
