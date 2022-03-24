@@ -9,8 +9,6 @@ project(${EXE_NAME})
 set(CMAKE_CXX_STANDARD 17)
 set(PROJECT_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-add_compile_options(/MP) # build in parallel
-
 set(SOURCES
     Driver.cpp
     FixOps.cpp
