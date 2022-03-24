@@ -6,15 +6,10 @@ set(EXE_NAME ImgFix)
 
 project(${EXE_NAME})
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "" FORCE)
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
+set(CMAKE_CXX_STANDARD 17)
 set(PROJECT_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# warning level, all warnings as errors, build in parallel, disable security warnings, latest language support
-add_compile_options(/W3 /WX /MP /sdl- /std:c++latest)
-
-set(__ARCH "x64")
+add_compile_options(/MP) # build in parallel
 
 set(SOURCES
     Driver.cpp

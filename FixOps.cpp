@@ -304,15 +304,15 @@ std::shared_ptr<baseImage> DoBlur(std::shared_ptr<baseImage> curImg, int filtWid
 {
     std::cerr << "Blur: " << filtWid << " " << imageStDev << std::endl;
 
-    if (std::shared_ptr<f1Image> f1I = dynamic_pointer_cast<f1Image>(curImg)) {
+    if (std::shared_ptr<f1Image> f1I = std::dynamic_pointer_cast<f1Image>(curImg)) {
         std::shared_ptr<f1Image> dstImg(new f1Image);
         GaussianBlur(*dstImg, *f1I, filtWid, imageStDev);
         curImg = dstImg;
-    } else if (std::shared_ptr<f3Image> f3I = dynamic_pointer_cast<f3Image>(curImg)) {
+    } else if (std::shared_ptr<f3Image> f3I = std::dynamic_pointer_cast<f3Image>(curImg)) {
         std::shared_ptr<f3Image> dstImg(new f3Image);
         GaussianBlur(*dstImg, *f3I, filtWid, imageStDev);
         curImg = dstImg;
-    } else if (std::shared_ptr<f4Image> f4I = dynamic_pointer_cast<f4Image>(curImg)) {
+    } else if (std::shared_ptr<f4Image> f4I = std::dynamic_pointer_cast<f4Image>(curImg)) {
         std::shared_ptr<f4Image> dstImg(new f4Image);
         GaussianBlur(*dstImg, *f4I, filtWid, imageStDev);
         curImg = dstImg;
@@ -327,7 +327,7 @@ std::shared_ptr<baseImage> DoGrow(std::shared_ptr<baseImage> curImg)
 {
     std::cerr << "Grow black region" << std::endl;
 
-    if (std::shared_ptr<f1Image> srcIm = dynamic_pointer_cast<f1Image>(curImg)) {
+    if (std::shared_ptr<f1Image> srcIm = std::dynamic_pointer_cast<f1Image>(curImg)) {
         f1Image* dstIm(new f1Image(srcIm->w(), srcIm->h()));
         for (int y = 0; y < srcIm->h(); y++)
             for (int x = 0; x < srcIm->w(); x++) {
@@ -489,27 +489,27 @@ std::shared_ptr<baseImage> DoResize(std::shared_ptr<baseImage> curImg, int newWi
 
     if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
         f1Image* dstImg = new f1Image();
-        Resample(*dstImg, *f1I, newWid, newHgt);
+        Resize(*dstImg, *f1I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
         f3Image* dstImg = new f3Image();
-        Resample(*dstImg, *f3I, newWid, newHgt);
+        Resize(*dstImg, *f3I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
         f4Image* dstImg = new f4Image();
-        Resample(*dstImg, *f4I, newWid, newHgt);
+        Resize(*dstImg, *f4I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
         uc1Image* dstImg = new uc1Image();
-        Resample(*dstImg, *uc1I, newWid, newHgt);
+        Resize(*dstImg, *uc1I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
         uc3Image* dstImg = new uc3Image();
-        Resample(*dstImg, *uc3I, newWid, newHgt);
+        Resize(*dstImg, *uc3I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
         uc4Image* dstImg = new uc4Image();
-        Resample(*dstImg, *uc4I, newWid, newHgt);
+        Resize(*dstImg, *uc4I, newWid, newHgt);
         curImg = std::shared_ptr<baseImage>(dstImg);
     } else {
         throw DMcError("Unsupported image type.\n");
@@ -720,7 +720,7 @@ template <class Image_T> void DoFlatten(Image_T& dstImg, const Image_T& srcImg, 
     GaussianBlur(shrunkBlurredImg, *shrunkImg, KernelSize, KernelSize * 0.333f);
     std::cerr << "Upsampling.\n";
     // BlurImg will be full-size blurred.
-    Resample(blurredImg, shrunkBlurredImg, srcImg.w(), srcImg.h());
+    Resize(blurredImg, shrunkBlurredImg, srcImg.w(), srcImg.h());
 
     // shrunkBlurredImg.Save("shrunkBlurredImg.jpg");
     // blurredImg.Save("blurredImg.png");
