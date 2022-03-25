@@ -172,7 +172,7 @@ template <class Image_T> void ContentAwareResize(Image_T& Out, const Image_T& In
     }
 
     // Randomly choose a minimum path
-    int chc = LRand(cntmin);
+    int chc = irand(cntmin);
     int xi = 0;
     cntmin = 0;
     for (int x = 0; x < iw; x++) {
