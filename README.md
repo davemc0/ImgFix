@@ -1,9 +1,7 @@
 ![ImgFix](sample.jpg)
 
 # ImgFix
-A command line-based raster image editing tool
-
-Written and maintained continuously from 2000-2022 by David K. McAllister
+A command line-based raster image editing tool by David K. McAllister
 
 This program is useful for many basic image editing tasks. It also is a useful platform for implementing new or one-off algorithms.
 
@@ -26,8 +24,7 @@ Building the Program
 
 Building ImgFix can be accomplished using CMake and a C++ compiler. It also depends on DMcTools: https://github.com/davemc0/DMcTools.git
 
-DMcTools has my collection of graphics tools - matrix class, image stuff,
-3D vector class, random numbers, timer, 3D model loader, etc.
+DMcTools has my collection of graphics tools - matrix class, image stuff, 3D vector class, random numbers, timer, 3D model loader, etc.
 
 How to build
 ------------
