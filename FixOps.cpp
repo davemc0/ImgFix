@@ -14,7 +14,7 @@ namespace {
 template <class Image_T> void Noise(Image_T& Img, float mean, float stdev)
 {
     for (int i = 0; i < Img.size(); i++) {
-        float v = NRandf(mean, stdev);
+        float v = nfrand(mean, stdev);
         Img[i] = typename Image_T::PixType(v);
     }
 }
