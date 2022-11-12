@@ -246,8 +246,8 @@ void DoFlip(std::shared_ptr<baseImage> curImg, bool isVert)
 {
     std::cerr << "Flip: " << (isVert ? "vertical" : "horizontal") << std::endl;
 
+    // Modifies image in place
     if (isVert) {
-        // Modifies image in place
         size_t linelen = curImg->w_virtual() * curImg->size_pixel_virtual();
         void* line = new unsigned char[linelen];
         for (int y = 0; y < curImg->h_virtual() / 2; y++) {
@@ -554,6 +554,39 @@ std::shared_ptr<baseImage> CAResizeBranch(std::shared_ptr<baseImage> curImg, int
     return curImg;
 }
 
+std::shared_ptr<baseImage> TransposeImageBranch(std::shared_ptr<baseImage> curImg)
+{
+    if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
+        f1Image* dstImg = new f1Image();
+        TransposeImage(*dstImg, *f1I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
+        f3Image* dstImg = new f3Image();
+        TransposeImage(*dstImg, *f3I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
+        f4Image* dstImg = new f4Image();
+        TransposeImage(*dstImg, *f4I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
+        uc1Image* dstImg = new uc1Image();
+        TransposeImage(*dstImg, *uc1I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
+        uc3Image* dstImg = new uc3Image();
+        TransposeImage(*dstImg, *uc3I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
+        uc4Image* dstImg = new uc4Image();
+        TransposeImage(*dstImg, *uc4I);
+        curImg = std::shared_ptr<baseImage>(dstImg);
+    } else {
+        throw DMcError("Unsupported image type.\n");
+    }
+
+    return curImg;
+}
+
 std::shared_ptr<baseImage> DoResizeCA(std::shared_ptr<baseImage> curImg, int newWid, int newHgt)
 {
     std::cerr << "Content-Aware Resize: " << newWid << 'x' << newHgt << std::endl;
@@ -562,67 +595,25 @@ std::shared_ptr<baseImage> DoResizeCA(std::shared_ptr<baseImage> curImg, int new
     while (curImg->w_virtual() > newWid || curImg->h_virtual() > newHgt) {
         for (int i = 0; i < ITERS_PER_DIM && curImg->w_virtual() > newWid; i++) { curImg = CAResizeBranch(curImg, newWid, curImg->h_virtual()); }
 
-        // Transpose it to do vertical shrinks
-        if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
-            f1Image* dstImg = new f1Image();
-            TransposeImage(*dstImg, *f1I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
-            f3Image* dstImg = new f3Image();
-            TransposeImage(*dstImg, *f3I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
-            f4Image* dstImg = new f4Image();
-            TransposeImage(*dstImg, *f4I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
-            uc1Image* dstImg = new uc1Image();
-            TransposeImage(*dstImg, *uc1I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
-            uc3Image* dstImg = new uc3Image();
-            TransposeImage(*dstImg, *uc3I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
-            uc4Image* dstImg = new uc4Image();
-            TransposeImage(*dstImg, *uc4I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else {
-            throw DMcError("Unsupported image type.\n");
-        }
+        curImg = TransposeImageBranch(curImg);
 
         // It's transposed so tread carefully.
         for (int i = 0; i < ITERS_PER_DIM && curImg->w_virtual() > newHgt; i++) { curImg = CAResizeBranch(curImg, newHgt, curImg->h_virtual()); }
 
         // Transpose it back
-        if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
-            f1Image* dstImg = new f1Image();
-            TransposeImage(*dstImg, *f1I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
-            f3Image* dstImg = new f3Image();
-            TransposeImage(*dstImg, *f3I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
-            f4Image* dstImg = new f4Image();
-            TransposeImage(*dstImg, *f4I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
-            uc1Image* dstImg = new uc1Image();
-            TransposeImage(*dstImg, *uc1I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
-            uc3Image* dstImg = new uc3Image();
-            TransposeImage(*dstImg, *uc3I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
-            uc4Image* dstImg = new uc4Image();
-            TransposeImage(*dstImg, *uc4I);
-            curImg = std::shared_ptr<baseImage>(dstImg);
-        } else {
-            throw DMcError("Unsupported image type.\n");
-        }
+        curImg = TransposeImageBranch(curImg);
     }
+
+    return curImg;
+}
+
+std::shared_ptr<baseImage> DoRotate90(std::shared_ptr<baseImage> curImg)
+{
+    std::cerr << "Rotate 90 degrees clockwise" << std::endl;
+
+    // Transpose and the flip horizontally
+    curImg = TransposeImageBranch(curImg);
+    DoFlip(curImg, false);
 
     return curImg;
 }

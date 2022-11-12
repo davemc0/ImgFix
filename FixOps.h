@@ -9,6 +9,7 @@ std::shared_ptr<baseImage> DoGrow(std::shared_ptr<baseImage> curImg);
 std::shared_ptr<baseImage> DoNoise(std::shared_ptr<baseImage> curImg, float mean, float stdev);
 std::shared_ptr<baseImage> DoResize(std::shared_ptr<baseImage> curImg, int newWid, int newHgt);
 std::shared_ptr<baseImage> DoResizeCA(std::shared_ptr<baseImage> curImg, int newWid, int newHgt);
+std::shared_ptr<baseImage> DoRotate90(std::shared_ptr<baseImage> curImg);
 std::shared_ptr<baseImage> DoRingDespeckleFilter(std::shared_ptr<baseImage> curImg, int filtWid, int clearWid, float threshold, int iterations);
 std::shared_ptr<baseImage> DoVCD(std::shared_ptr<baseImage> curImg, int filtWid, float imageStDev, float colorStDev, int iterations);
 template <class Image_T> void DoDiff(Image_T& imgA, const Image_T& imgB, const float scale);

@@ -57,6 +57,7 @@ static void Usage(const char* message = NULL, const bool Exit = true)
         "                                'X' => scale factor; 'x'|'y' => compute this dim\n"
         "-resizeca w|'x' h|'y'|'X'   Content-Aware Resize the given image to w x h. Seam carving; currently just shrinking\n"
         "                                'X' => scale factor; 'x'|'y' => compute this dim\n"
+        "-rotate                     Rotate image clockwise 90 degrees\n"
         "-threshold N                Convert image to two-tone at given threshold value\n"
         "-transect y                 Print channel 0 values of scanline y to stdout in CSV format\n"
         "-vcd f s c i                VCD filt_width img_stdev col_stdev iterations; try 5 3.0 0.25 1\n";
@@ -380,6 +381,10 @@ static void Driver(int& argc, char** argv)
             curImg = DoResizeCA(curImg, newWid, newHgt);
 
             RemoveArgs(argc, argv, i, 3);
+        } else if (starg == "-rotate") {
+            curImg = DoRotate90(curImg);
+
+            RemoveArgs(argc, argv, i);
         } else if (starg == "-blur") {
             if (argc <= i + 2) Usage();
 
