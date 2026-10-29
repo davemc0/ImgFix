@@ -50,7 +50,7 @@ static void Usage(const char* message = NULL, const bool Exit = true)
         "-linmap r0 g0 b0 r1 g1 b1   Project f3Image pixel values onto a line in RGB space\n"
         "-makef  N w h               Make an fImage of N channels, width and height; fill with black\n"
         "-makeuc N w h               Make a ucImage of N channels, width and height; fill with black\n"
-        "-matmul 0123456789ab[cdef]  Multiply each pixel value by this 4x3 (for f3Image) or 4x4 (for f4Image) matrix\n"
+        "-matmul 0123456789abcdef    Multiply each pixel value by this matrix 2x1 2x2 4x3 or 4x4\n"
         "-noise mean stdev           Fill image with noise\n"
         "-quant                      Quantize the image to pal colors (set params with -sp)\n"
         "-resize w|'x' h|'y'|'X'     Resize the given image to w x h. Bicubic upsampling; box filter then bicubic downsampling\n"
@@ -59,7 +59,7 @@ static void Usage(const char* message = NULL, const bool Exit = true)
         "                                'X' => scale factor; 'x'|'y' => compute this dim\n"
         "-rotate                     Rotate image clockwise 90 degrees\n"
         "-threshold N                Convert image to two-tone at given threshold value\n"
-        "-transect y                 Print channel 0 values of scanline y to stdout in CSV format\n"
+        "-print sx sy w h            Print pixel values of rect to stdout in CSV format\n"
         "-vcd f s c i                VCD filt_width img_stdev col_stdev iterations; try 5 3.0 0.25 1\n";
 
     if (Exit) exit(1);
@@ -191,7 +191,19 @@ static void Driver(int& argc, char** argv)
             RemoveArgs(argc, argv, i, 3);
         } else if (starg == "-matmul") {
             int subArgc = 0;
-            if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
+            if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
+                subArgc = 2;
+                if (argc <= i + subArgc) Usage();
+                const float sc = 1.f;
+                DoMatMul(*f1I, atof(argv[i + 1]) * sc, 0, 0, atof(argv[i + 2]), 0, atof(argv[i + 1]) * sc, 0, atof(argv[i + 2]), 0, 0,
+                         atof(argv[i + 1]) * sc, atof(argv[i + 2]), 0, 0, 0, 1.0f); // Use each input 3 times so have to scale it down
+            } else if (f2Image* f2I = dynamic_cast<f2Image*>(curImg.get())) {
+                subArgc = 4;
+                if (argc <= i + subArgc) Usage();
+                const float sc = 1.f;
+                DoMatMul(*f2I, atof(argv[i + 1]) * sc, 0, 0, atof(argv[i + 2]), 0, atof(argv[i + 1]) * sc, 0, atof(argv[i + 2]), 0, 0, atof(argv[i + 1]) * sc,
+                         atof(argv[i + 2]), atof(argv[i + 3]), atof(argv[i + 3]), atof(argv[i + 3]), atof(argv[i + 4]));
+            } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
                 subArgc = 12;
                 if (argc <= i + subArgc) Usage();
                 DoMatMul(*f3I, atof(argv[i + 1]), atof(argv[i + 2]), atof(argv[i + 3]), atof(argv[i + 4]), atof(argv[i + 5]), atof(argv[i + 6]),
@@ -218,7 +230,7 @@ static void Driver(int& argc, char** argv)
 
             RemoveArgs(argc, argv, i, 5);
         } else if (starg == "-grow") {
-            curImg = DoGrow(curImg);
+            curImg = DoGrowBlack(curImg);
 
             RemoveArgs(argc, argv, i);
         } else if (starg == "-flip") {
@@ -227,23 +239,31 @@ static void Driver(int& argc, char** argv)
             DoFlip(curImg, isVert);
 
             RemoveArgs(argc, argv, i, 2);
-        } else if (starg == "-transect") {
+        } else if (starg == "-print") {
             if (argc <= i + 1) Usage();
-            int yval = atoi(argv[i + 1]);
+            int sx = atoi(argv[i + 1]), sy = atoi(argv[i + 2]), sw = atoi(argv[i + 3]), sh = atoi(argv[i + 4]);
 
             if (uc1Image* uc1I = dynamic_cast<uc1Image*>(curImg.get())) {
-                DoPrintTransect(*uc1I, yval);
+                DoPrintPixels(*uc1I, sx, sy, sw, sh);
+            } else if (uc2Image* uc2I = dynamic_cast<uc2Image*>(curImg.get())) {
+                DoPrintPixels(*uc2I, sx, sy, sw, sh);
             } else if (uc3Image* uc3I = dynamic_cast<uc3Image*>(curImg.get())) {
-                DoPrintTransect(*uc3I, yval);
+                DoPrintPixels(*uc3I, sx, sy, sw, sh);
+            } else if (uc4Image* uc4I = dynamic_cast<uc4Image*>(curImg.get())) {
+                DoPrintPixels(*uc4I, sx, sy, sw, sh);
             } else if (f1Image* f1I = dynamic_cast<f1Image*>(curImg.get())) {
-                DoPrintTransect(*f1I, yval);
+                DoPrintPixels(*f1I, sx, sy, sw, sh);
+            } else if (f2Image* f2I = dynamic_cast<f2Image*>(curImg.get())) {
+                DoPrintPixels(*f2I, sx, sy, sw, sh);
             } else if (f3Image* f3I = dynamic_cast<f3Image*>(curImg.get())) {
-                DoPrintTransect(*f3I, yval);
+                DoPrintPixels(*f3I, sx, sy, sw, sh);
+            } else if (f4Image* f4I = dynamic_cast<f4Image*>(curImg.get())) {
+                DoPrintPixels(*f4I, sx, sy, sw, sh);
             } else {
                 throw DMcError("Unsupported image type.\n");
             }
 
-            RemoveArgs(argc, argv, i, 2);
+            RemoveArgs(argc, argv, i, 5);
         } else if (starg == "-flatten") {
             if (argc <= i + 2) Usage();
             float shrinkFac = atof(argv[i + 1]);

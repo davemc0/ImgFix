@@ -53,7 +53,7 @@ void CopyBlock(Image_T* dstImg, const Image_T* srcImg, int dx, int dy, int sx, i
     case 3: std::cerr << "Adobe Multiply lerping "; break;
     case 4: std::cerr << "Over blending (alpha=" << alpha << ')'; break;
     case 5: std::cerr << "Adding "; break;
-    case 6: std::cerr << "Copying channel " << key[0]; break;
+    case 6: std::cerr << "Copying channel " << (int)key[0]; break;
     default: std::cerr << "ERROR"; break;
     }
 
@@ -323,7 +323,7 @@ std::shared_ptr<baseImage> DoBlur(std::shared_ptr<baseImage> curImg, int filtWid
     return curImg;
 }
 
-std::shared_ptr<baseImage> DoGrow(std::shared_ptr<baseImage> curImg)
+std::shared_ptr<baseImage> DoGrowBlackOrig(std::shared_ptr<baseImage> curImg)
 {
     std::cerr << "Grow black region" << std::endl;
 
@@ -336,6 +336,28 @@ std::shared_ptr<baseImage> DoGrow(std::shared_ptr<baseImage> curImg)
                     for (int sx = std::max(0, x - 1); sx <= x + 1 && sx < srcIm->w(); sx++) // If I have a black neighbor set me to black
                         nearBlack = nearBlack || ((*srcIm)(sx, sy) < 0.5f);
                 (*dstIm)(x, y) = nearBlack ? f1Pixel(0.f) : (*srcIm)(x, y);
+            }
+        return std::shared_ptr<baseImage>(dstIm);
+    } else {
+        throw DMcError("Unsupported image type.\n");
+    }
+
+    return curImg;
+}
+
+std::shared_ptr<baseImage> DoGrowBlack(std::shared_ptr<baseImage> curImg)
+{
+    std::cerr << "Grow black region by making each pixel be min of its neighbors" << std::endl;
+
+    if (std::shared_ptr<f1Image> srcIm = std::dynamic_pointer_cast<f1Image>(curImg)) {
+        f1Image* dstIm(new f1Image(srcIm->w(), srcIm->h()));
+        for (int y = 0; y < srcIm->h(); y++)
+            for (int x = 0; x < srcIm->w(); x++) {
+                f1Pixel theMin = std::numeric_limits<f1Pixel::FloatMathType>::infinity();
+                for (int sy = std::max(0, y - 1); sy <= y + 1 && sy < srcIm->h(); sy++)
+                    for (int sx = std::max(0, x - 1); sx <= x + 1 && sx < srcIm->w(); sx++) // Set me to the min of my neighbors
+                        theMin = min((*srcIm)(sx, sy), theMin);
+                (*dstIm)(x, y) = theMin;
             }
         return std::shared_ptr<baseImage>(dstIm);
     } else {
@@ -450,11 +472,19 @@ void DoMatMul(Image_T& Img, float m0, float m1, float m2, float m3, float m4, fl
 
     // Modifies image in place
     for (int p = 0; p < Img.size(); p++) {
+        // if (p == 128 * 1109 + 103) std::cerr << Img[p] << '\n';
         f4Pixel pf = Img[p]; // Converts from Image_T's pixel type to f4Pixel
+        // if (p == 128 * 1109 + 103) std::cerr << pf << '\n';
         Mat.Project(pf.r(), pf.g(), pf.b(), pf.a());
+        // if (p == 128 * 1109 + 103) std::cerr << pf << '\n';
         Img[p] = pf; // Converts from f4Pixel to Image_T's pixel type
+        // if (p == 128 * 1109 + 103) std::cerr << Img[p] << '\n';
     }
 }
+template void DoMatMul(f1Image& Img, float m0, float m1, float m2, float m3, float m4, float m5, float m6, float m7, float m8, float m9, float ma, float mb,
+                       float mc, float md, float me, float mf);
+template void DoMatMul(f2Image& Img, float m0, float m1, float m2, float m3, float m4, float m5, float m6, float m7, float m8, float m9, float ma, float mb,
+                       float mc, float md, float me, float mf);
 template void DoMatMul(f3Image& Img, float m0, float m1, float m2, float m3, float m4, float m5, float m6, float m7, float m8, float m9, float ma, float mb,
                        float mc, float md, float me, float mf);
 template void DoMatMul(f4Image& Img, float m0, float m1, float m2, float m3, float m4, float m5, float m6, float m7, float m8, float m9, float ma, float mb,
@@ -739,19 +769,26 @@ template void DoFlatten(f1Image& dstImg, const f1Image& srcImg, const float shri
 template void DoFlatten(f3Image& dstImg, const f3Image& srcImg, const float shrinkFac, const float biasFac);
 
 // -transect 128 > fname.csv
-template <class Image_T> void DoPrintTransect(Image_T& Img, const int y)
+template <class Image_T> void DoPrintPixels(Image_T& Img, const int sx, const int sy, const int sw, const int sh)
 {
-    std::cerr << "Transect: y " << y << '\n';
+    std::cerr << "Print pixels in range: (" << sx << "," << sy << ") .. (" << sx + sw << "," << sy + sh << ")" << '\n';
 
-    for (int x = 0; x < Img.w(); x++) {
-        std::cout << x << ',' << static_cast<float>(Img(x, y).r()) << ',' << static_cast<float>(Img(x, y).g()) << ',' << static_cast<float>(Img(x, y).b())
-                  << std::endl;
+    for (int y = sy; y < sy + sh && y < Img.h(); y++) {
+        for (int x = sx; x < sx + sw && x < Img.w(); x++) {
+            std::cout << x << ',' << y;
+            for (int c = 0; c < Img.chan(); c++) std::cout << ',' << static_cast<float>(Img(x, y)[c]);
+            std::cout << std::endl;
+        }
     }
 }
-template void DoPrintTransect(uc1Image& Img, const int y);
-template void DoPrintTransect(f1Image& Img, const int y);
-template void DoPrintTransect(uc3Image& Img, const int y);
-template void DoPrintTransect(f3Image& Img, const int y);
+template void DoPrintPixels(uc1Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(f1Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(uc2Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(f2Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(uc3Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(f3Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(uc4Image& Img, const int sx, const int sy, const int sw, const int sh);
+template void DoPrintPixels(f4Image& Img, const int sx, const int sy, const int sw, const int sh);
 
 template <class Image_T> void DoThreshold(Image_T& Img, const typename Image_T::PixType threshold)
 {
